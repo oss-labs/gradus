@@ -144,7 +144,8 @@ useSeoMeta({
   twitterCard: "summary_large_image",
 });
 
-const filter = ref([]);
+const router = useRouter();
+// const filter = ref([]);
 const topics = ref(topicFilters);
 const search = ref("");
 // const debouncedSearch = useDebounce(search, 500);
@@ -166,6 +167,26 @@ onMounted(() => {
   }
 });
 
+function getFilterFromUrl() {
+  const urlParams = new URLSearchParams(router.currentRoute.value.query);
+  const filter = urlParams.get("filter");
+  return filter ? filter.split(",") : [];
+}
+
+const filter = ref(getFilterFromUrl());
+
+function setFilterToUrl(filter) {
+  const urlParams = new URLSearchParams(router.currentRoute.value.query);
+
+  if (filter.length === 0) {
+    urlParams.delete("filter");
+  } else {
+    urlParams.set("filter", filter.join(","));
+  }
+
+  router.push({ query: Object.fromEntries(urlParams.entries()) });
+}
+
 const fetchData = async () => {
   query.value = { draft: false };
   const { data } = await useAsyncData("allData", () =>
@@ -177,21 +198,21 @@ const fetchData = async () => {
 };
 
 const filterData = (a) => {
-  if (a.length) {
-    const upperCaseTags = a.map((tag) => tag.toUpperCase());
-
-    res.value = actualRes.value.filter((obj) => {
-      return obj.tags.some((objTag) =>
-        upperCaseTags.includes(objTag.toUpperCase())
-      );
-    });
-  } else {
-    res.value = actualRes.value;
+  if (a.length === 0) {
+    resetData();
+    return;
   }
+  const upperCaseTags = a.map((tag) => tag.toUpperCase());
+  setFilterToUrl(upperCaseTags);
+
+  res.value = actualRes.value.filter((obj) =>
+    obj.tags.some((objTag) => upperCaseTags.includes(objTag.toUpperCase()))
+  );
 };
 
 const resetData = () => {
   res.value = actualRes.value;
+  setFilterToUrl([]);
 };
 
 const searchData = () => {
